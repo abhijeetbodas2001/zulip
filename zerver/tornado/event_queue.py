@@ -1165,6 +1165,7 @@ def process_message_update_event(
 
 
 def maybe_enqueue_notifications_for_message_update(
+    *,
     user_profile_id: int,
     message_id: int,
     private_message: bool,
