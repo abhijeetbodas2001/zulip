@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Collection, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from unittest import mock
 
 import orjson
@@ -242,28 +242,15 @@ class MissedMessageNotificationsTest(ZulipTestCase):
             self.assert_json_success(result)
 
         def assert_maybe_enqueue_notifications_call_args(
-            args_list: Collection[Any],
+            call_kwargs_dict: Dict[str, Any],
             user_profile_id: int,
             message_id: int,
-            **kwargs: Union[bool, Dict[str, bool], Optional[str]],
+            **kwargs: Union[bool, Dict[str, bool], Optional[str], int],
         ) -> None:
-            kwargs = self.get_maybe_enqueue_notifications_parameters(**kwargs)
-            self.assertEqual(
-                args_list,
-                (
-                    user_profile_id,
-                    message_id,
-                    kwargs["private_message"],
-                    kwargs["mentioned"],
-                    kwargs["wildcard_mention_notify"],
-                    kwargs["stream_push_notify"],
-                    kwargs["stream_email_notify"],
-                    kwargs["stream_name"],
-                    kwargs["online_push_enabled"],
-                    kwargs["idle"],
-                    kwargs["already_notified"],
-                ),
-            )
+            kwargs["user_profile_id"] = user_profile_id
+            kwargs["message_id"] = message_id
+            expected_kwargs = self.get_maybe_enqueue_notifications_parameters(**kwargs)
+            self.assertEqual(call_kwargs_dict, expected_kwargs)
 
         client_descriptor = allocate_event_queue()
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
@@ -280,10 +267,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
             # Now verify that we called the appropriate enqueue function
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_name="Denmark",
@@ -298,10 +285,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 private_message=True,
@@ -318,10 +305,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 mentioned=True,
@@ -339,10 +326,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 wildcard_mention_notify=True,
@@ -364,10 +351,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_name="Denmark",
@@ -385,10 +372,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_name="Denmark",
@@ -408,10 +395,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_name="Denmark",
@@ -435,10 +422,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 wildcard_mention_notify=True,
@@ -461,10 +448,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_push_notify=True,
@@ -486,10 +473,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_push_notify=False,
@@ -517,10 +504,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_name="Denmark",
@@ -543,10 +530,10 @@ class MissedMessageNotificationsTest(ZulipTestCase):
         with mock.patch("zerver.tornado.event_queue.maybe_enqueue_notifications") as mock_enqueue:
             missedmessage_hook(user_profile.id, client_descriptor, True)
             mock_enqueue.assert_called_once()
-            args_list = mock_enqueue.call_args_list[0][0]
+            call_kwargs_dict = mock_enqueue.call_args_list[0][1]
 
             assert_maybe_enqueue_notifications_call_args(
-                args_list=args_list,
+                call_kwargs_dict=call_kwargs_dict,
                 user_profile_id=user_profile.id,
                 message_id=msg_id,
                 stream_name="Denmark",

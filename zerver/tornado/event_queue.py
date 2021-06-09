@@ -764,17 +764,17 @@ def missedmessage_hook(
             email_notified=event.get("internal_data", {}).get("email_notified", False),
         )
         maybe_enqueue_notifications(
-            user_profile_id,
-            message_id,
-            private_message,
-            mentioned,
-            wildcard_mention_notify,
-            stream_push_notify,
-            stream_email_notify,
-            stream_name,
-            online_push_enabled,
-            idle,
-            already_notified,
+            user_profile_id=user_profile_id,
+            message_id=message_id,
+            private_message=private_message,
+            mentioned=mentioned,
+            wildcard_mention_notify=wildcard_mention_notify,
+            stream_push_notify=stream_push_notify,
+            stream_email_notify=stream_email_notify,
+            stream_name=stream_name,
+            online_push_enabled=online_push_enabled,
+            idle=idle,
+            already_notified=already_notified,
         )
 
 
@@ -790,6 +790,7 @@ def receiver_is_off_zulip(user_profile_id: int) -> bool:
 
 
 def maybe_enqueue_notifications(
+    *,
     user_profile_id: int,
     message_id: int,
     private_message: bool,
@@ -987,17 +988,17 @@ def process_message_event(
 
             result: Dict[str, Any] = {}
             result["internal_data"] = maybe_enqueue_notifications(
-                user_profile_id,
-                message_id,
-                private_message,
-                mentioned,
-                wildcard_mention_notify,
-                stream_push_notify,
-                stream_email_notify,
-                stream_name,
-                online_push_enabled,
-                idle,
-                {},
+                user_profile_id=user_profile_id,
+                message_id=message_id,
+                private_message=private_message,
+                mentioned=mentioned,
+                wildcard_mention_notify=wildcard_mention_notify,
+                stream_push_notify=stream_push_notify,
+                stream_email_notify=stream_email_notify,
+                stream_name=stream_name,
+                online_push_enabled=online_push_enabled,
+                idle=idle,
+                already_notified={},
             )
             result["internal_data"]["stream_push_notify"] = stream_push_notify
             result["internal_data"]["stream_email_notify"] = stream_email_notify
