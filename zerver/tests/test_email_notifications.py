@@ -451,9 +451,14 @@ class TestMissedMessages(ZulipTestCase):
         verify_body_does_not_include: Sequence[str] = [],
         trigger: str = "",
         mentioned_user_group_id: Optional[int] = None,
+        enable_stream_notifications_for_hamlet: bool = False,
     ) -> None:
         othello = self.example_user("othello")
         hamlet = self.example_user("hamlet")
+        if enable_stream_notifications_for_hamlet:
+            do_change_user_setting(
+                hamlet, "enable_stream_email_notifications", True, acting_user=None
+            )
         tokens = self._get_tokens()
         with patch("zerver.lib.email_mirror.generate_missed_message_token", side_effect=tokens):
             handle_missedmessage_emails(
@@ -615,7 +620,12 @@ class TestMissedMessages(ZulipTestCase):
         ]
         email_subject = "#Denmark > test"
         self._test_cases(
-            msg_id, verify_body_include, email_subject, send_as_user, trigger="stream_email_notify"
+            msg_id,
+            verify_body_include,
+            email_subject,
+            send_as_user,
+            trigger="stream_email_notify",
+            enable_stream_notifications_for_hamlet=True,
         )
 
     def _extra_context_in_missed_stream_messages_mention_two_senders(
@@ -658,7 +668,12 @@ class TestMissedMessages(ZulipTestCase):
         ]
         email_subject = "[resolved] #Denmark > threading and so forth"
         self._test_cases(
-            msg_id, verify_body_include, email_subject, send_as_user, trigger="stream_email_notify"
+            msg_id,
+            verify_body_include,
+            email_subject,
+            send_as_user,
+            trigger="stream_email_notify",
+            enable_stream_notifications_for_hamlet=True,
         )
 
     def _extra_context_in_missed_personal_messages(
@@ -972,6 +987,7 @@ class TestMissedMessages(ZulipTestCase):
 
     def test_wildcard_over_stream_mention_priority(self) -> None:
         hamlet = self.example_user("hamlet")
+        do_change_user_setting(hamlet, "enable_stream_email_notifications", True, acting_user=None)
         othello = self.example_user("othello")
 
         stream_mentioned_message_id = self.send_stream_message(othello, "Denmark", "1")
@@ -1244,6 +1260,7 @@ class TestMissedMessages(ZulipTestCase):
 
     def test_sender_name_in_missed_message(self) -> None:
         hamlet = self.example_user("hamlet")
+        do_change_user_setting(hamlet, "enable_stream_email_notifications", True, acting_user=None)
         msg_id_1 = self.send_stream_message(
             self.example_user("iago"), "Denmark", "@**King Hamlet**"
         )
@@ -1309,6 +1326,7 @@ class TestMissedMessages(ZulipTestCase):
 
     def test_multiple_stream_messages(self) -> None:
         hamlet = self.example_user("hamlet")
+        do_change_user_setting(hamlet, "enable_stream_email_notifications", True, acting_user=None)
         msg_id_1 = self.send_stream_message(self.example_user("othello"), "Denmark", "Message1")
         msg_id_2 = self.send_stream_message(self.example_user("iago"), "Denmark", "Message2")
 
@@ -1326,6 +1344,7 @@ class TestMissedMessages(ZulipTestCase):
     def test_multiple_stream_messages_and_mentions(self) -> None:
         """Subject should be stream name and topic as usual."""
         hamlet = self.example_user("hamlet")
+        do_change_user_setting(hamlet, "enable_stream_email_notifications", True, acting_user=None)
         msg_id_1 = self.send_stream_message(self.example_user("iago"), "Denmark", "Regular message")
         msg_id_2 = self.send_stream_message(
             self.example_user("othello"), "Denmark", "@**King Hamlet**"
@@ -1343,14 +1362,19 @@ class TestMissedMessages(ZulipTestCase):
         self.assertEqual(mail.outbox[0].subject, email_subject)
 
     def test_message_access_in_emails(self) -> None:
-        # Messages sent to a protected history-private stream shouldn't be
-        # accessible/available in emails before subscribing
+        # Messages sent to a protected history-private stream before subscribing
+        # shouldn't be accessible/available in emails
         stream_name = "private_stream"
         self.make_stream(stream_name, invite_only=True, history_public_to_subscribers=False)
         user = self.example_user("iago")
         self.subscribe(user, stream_name)
         late_subscribed_user = self.example_user("hamlet")
+        do_change_user_setting(
+            late_subscribed_user, "enable_stream_email_notifications", True, acting_user=None
+        )
 
+        # If Hamlet was subscribed to the stream, he would have received an email notification
+        # for this message.
         self.send_stream_message(user, stream_name, "Before subscribing")
 
         self.subscribe(late_subscribed_user, stream_name)
@@ -1376,6 +1400,7 @@ class TestMissedMessages(ZulipTestCase):
     def test_stream_mentions_multiple_people(self) -> None:
         """Subject should be stream name and topic as usual."""
         hamlet = self.example_user("hamlet")
+        do_change_user_setting(hamlet, "enable_stream_email_notifications", True, acting_user=None)
         cordelia = self.example_user("cordelia")
 
         self.subscribe(cordelia, "Denmark")
@@ -1403,6 +1428,7 @@ class TestMissedMessages(ZulipTestCase):
     def test_multiple_stream_messages_different_topics(self) -> None:
         """Should receive separate emails for each topic within a stream."""
         hamlet = self.example_user("hamlet")
+        do_change_user_setting(hamlet, "enable_stream_email_notifications", True, acting_user=None)
         msg_id_1 = self.send_stream_message(self.example_user("othello"), "Denmark", "Message1")
         msg_id_2 = self.send_stream_message(
             self.example_user("iago"), "Denmark", "Message2", topic_name="test2"
