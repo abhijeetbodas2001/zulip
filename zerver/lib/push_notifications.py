@@ -22,6 +22,7 @@ from zerver.decorator import statsd_increment
 from zerver.lib.avatar import absolute_avatar_url
 from zerver.lib.exceptions import JsonableError
 from zerver.lib.message import access_message, huddle_users
+from zerver.lib.notification_data import UserMessageNotificationsData
 from zerver.lib.outgoing_http import OutgoingSession
 from zerver.lib.remote_server import send_json_to_push_bouncer, send_to_push_bouncer
 from zerver.lib.soft_deactivation import soft_reactivate_if_personal_notification
@@ -1054,13 +1055,6 @@ def handle_push_notification(user_profile_id: int, missed_message: Dict[str, Any
         )
         return
 
-    if not (
-        user_profile.enable_offline_push_notifications
-        or user_profile.enable_online_push_notifications
-    ):
-        # BUG: Investigate why it's possible to get here.
-        return  # nocoverage
-
     try:
         (message, user_message) = access_message(user_profile, missed_message["message_id"])
     except JsonableError:
@@ -1078,6 +1072,13 @@ def handle_push_notification(user_profile_id: int, missed_message: Dict[str, Any
     if user_message is not None:
         # If the user has read the message already, don't push-notify.
         if user_message.flags.read or user_message.flags.active_mobile_push_notification:
+            return
+
+        notification_data = UserMessageNotificationsData.from_message(
+            message, user_profile, user_message
+        )
+        if not notification_data.is_push_notifiable(message.sender.id, idle=True):
+            print(">>>>>>>>>> Returned from here")
             return
 
         # Otherwise, we mark the message as having an active mobile

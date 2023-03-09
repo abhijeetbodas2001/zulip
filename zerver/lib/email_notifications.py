@@ -23,7 +23,7 @@ from confirmation.models import one_click_unsubscribe_link
 from zerver.decorator import statsd_increment
 from zerver.lib.markdown.fenced_code import FENCE_RE
 from zerver.lib.message import bulk_access_messages
-from zerver.lib.notification_data import get_mentioned_user_group_name
+from zerver.lib.notification_data import UserMessageNotificationsData, get_mentioned_user_group_name
 from zerver.lib.queue import queue_json_publish
 from zerver.lib.send_email import FromAddress, send_future_email
 from zerver.lib.soft_deactivation import soft_reactivate_if_personal_notification
@@ -589,10 +589,6 @@ def handle_missedmessage_emails(
         logger.warning("Send-email event found for bot user %s. Skipping.", user_profile_id)
         return
 
-    if not user_profile.enable_offline_email_notifications:
-        # BUG: Investigate why it's possible to get here.
-        return  # nocoverage
-
     # Note: This query structure automatically filters out any
     # messages that were permanently deleted, since those would now be
     # in the ArchivedMessage table, not the Message table.
@@ -611,6 +607,10 @@ def handle_missedmessage_emails(
     # For PMs it's recipient id and sender.
     messages_by_bucket: Dict[Tuple[int, Union[int, str]], List[Message]] = defaultdict(list)
     for msg in messages:
+        notification_data = UserMessageNotificationsData.from_message(msg, user_profile)
+        if not notification_data.is_email_notifiable(msg.sender.id, idle=True):
+            continue
+
         if msg.recipient.type == Recipient.PERSONAL:
             # For PM's group using (recipient, sender).
             messages_by_bucket[(msg.recipient_id, msg.sender_id)].append(msg)

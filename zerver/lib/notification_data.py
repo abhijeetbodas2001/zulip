@@ -3,8 +3,18 @@ from dataclasses import dataclass
 from typing import Any, Collection, Dict, List, Optional, Set
 
 from zerver.lib.mention import MentionData
+from zerver.lib.muted_users import get_mute_object
 from zerver.lib.user_groups import get_user_group_direct_member_ids
-from zerver.models import NotificationTriggers, UserGroup, UserProfile, UserTopic
+from zerver.lib.user_topics import topic_is_muted
+from zerver.models import (
+    Message,
+    NotificationTriggers,
+    Subscription,
+    UserGroup,
+    UserMessage,
+    UserProfile,
+    UserTopic,
+)
 
 
 @dataclass
@@ -29,6 +39,83 @@ class UserMessageNotificationsData:
 
         if self.stream_email_notify or self.stream_push_notify:
             assert not (self.pm_email_notify or self.pm_push_notify)
+
+    @classmethod
+    def from_message(
+        cls, message: Message, user_profile: UserProfile, usermessage: Optional[UserMessage] = None
+    ) -> "UserMessageNotificationsData":
+        if usermessage is None:
+            usermessage = UserMessage.objects.get(user_profile=user_profile, message_id=message.id)
+
+        flags = usermessage.flags_list()
+        sender_is_muted = get_mute_object(user_profile, message.sender) is not None
+
+        is_PM = not message.is_stream_message()
+        mentioned = "mentioned" in flags
+        wildcard_mentioned = "wildcard_mentioned" in flags
+
+        pm_email_notify = is_PM and user_profile.enable_offline_email_notifications
+        pm_push_notify = is_PM and user_profile.enable_offline_push_notifications
+        mention_email_notify = mentioned and user_profile.enable_offline_email_notifications
+        mention_push_notify = mentioned and user_profile.enable_offline_push_notifications
+
+        wildcard_mention_email_notify = False
+        wildcard_mention_push_notify = False
+        stream_push_notify = False
+        stream_email_notify = False
+
+        if message.is_stream_message():
+            sub = Subscription.objects.get(
+                user_profile=user_profile, recipient_id=message.recipient.id, active=True
+            )
+            topic_muted = topic_is_muted(user_profile, message.recipient.id, message.topic_name())
+            wildcard_mention_push_notify = (
+                user_allows_notifications_in_StreamTopic(
+                    sub.is_muted,
+                    topic_muted,
+                    sub.wildcard_mentions_notify,
+                    user_profile.wildcard_mentions_notify,
+                )
+                and user_profile.enable_offline_push_notifications
+                and wildcard_mentioned
+            )
+            wildcard_mention_email_notify = (
+                user_allows_notifications_in_StreamTopic(
+                    sub.is_muted,
+                    topic_muted,
+                    sub.wildcard_mentions_notify,
+                    user_profile.wildcard_mentions_notify,
+                )
+                and user_profile.enable_offline_email_notifications
+                and wildcard_mentioned
+            )
+            stream_push_notify = user_allows_notifications_in_StreamTopic(
+                sub.is_muted,
+                topic_muted,
+                sub.push_notifications,
+                user_profile.enable_stream_push_notifications,
+            )
+            stream_email_notify = user_allows_notifications_in_StreamTopic(
+                sub.is_muted,
+                topic_muted,
+                sub.email_notifications,
+                user_profile.enable_stream_email_notifications,
+            )
+
+        return UserMessageNotificationsData(
+            user_id=user_profile.id,
+            online_push_enabled=user_profile.enable_online_push_notifications,
+            pm_email_notify=pm_email_notify,
+            pm_push_notify=pm_push_notify,
+            mention_email_notify=mention_email_notify,
+            mention_push_notify=mention_push_notify,
+            wildcard_mention_email_notify=wildcard_mention_email_notify,
+            wildcard_mention_push_notify=wildcard_mention_push_notify,
+            stream_push_notify=stream_push_notify,
+            stream_email_notify=stream_email_notify,
+            sender_is_muted=sender_is_muted,
+            disable_external_notifications=False
+        )
 
     @classmethod
     def from_user_id_sets(
